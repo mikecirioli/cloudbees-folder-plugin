@@ -9,11 +9,13 @@ import hudson.ExtensionFinder;
 import hudson.init.InitMilestone;
 import hudson.init.Initializer;
 import jenkins.model.Jenkins;
+import org.htmlunit.html.HtmlPage;
 import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.Issue;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.LoggerRule;
+import org.jvnet.hudson.test.MockAuthorizationStrategy;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,6 +25,7 @@ import java.util.stream.Collectors;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.emptyIterable;
 import static org.hamcrest.Matchers.hasSize;
+import static org.junit.Assert.assertTrue;
 
 public class AbstractFolderConfigurationTest {
 
@@ -47,6 +50,18 @@ public class AbstractFolderConfigurationTest {
                 emptyIterable());
     }
 
+    @Test
+    @Issue("JENKINS-73086")
+    public void manageCanConfigureGlobalDefaults() throws Exception {
+        r.jenkins.setSecurityRealm(r.createDummySecurityRealm());
+        MockAuthorizationStrategy auth = new MockAuthorizationStrategy();
+        auth.grant(Jenkins.MANAGE).everywhere().to("alice");
+        auth.grant(Jenkins.READ).everywhere().toEveryone();
+        r.jenkins.setAuthorizationStrategy(auth);
+        HtmlPage htmlPage = r.createWebClient().login("alice").goTo("manage/configure");
+        assertTrue(htmlPage.getVisibleText().contains("Folder"));
+        assertTrue(htmlPage.getVisibleText().contains("Health Metrics"));
+    }
     @Test
     public void healthMetricsAppearsInConfiguredGlobally() throws Exception {
         HtmlForm cfg = r.createWebClient().goTo("configure").getFormByName("config");
